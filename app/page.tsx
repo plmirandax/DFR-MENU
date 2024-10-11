@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
-import { ChevronRight } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { motion, AnimatePresence, useAnimation } from 'framer-motion'
 
 export default function Component() {
   const images = [
@@ -15,33 +15,64 @@ export default function Component() {
   ]
 
   const [currentIndex, setCurrentIndex] = useState(0)
+  const controls = useAnimation()
 
   const nextImage = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length)
+    controls.start({ x: '-100%', transition: { duration: 0.5 } }).then(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length)
+      controls.set({ x: '100%' })
+      controls.start({ x: 0, transition: { duration: 0.5 } })
+    })
+  }
+
+  const prevImage = () => {
+    controls.start({ x: '100%', transition: { duration: 0.5 } }).then(() => {
+      setCurrentIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length)
+      controls.set({ x: '-100%' })
+      controls.start({ x: 0, transition: { duration: 0.5 } })
+    })
   }
 
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden">
-      <AnimatePresence mode="wait">
+      <AnimatePresence initial={false}>
         <motion.div
           key={currentIndex}
-          initial={{ opacity: 0, x: 300 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -300 }}
-          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          animate={controls}
           className="w-full h-full"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={1}
+          onDragEnd={(e, { offset, velocity }) => {
+            if (offset.x > 100) {
+              prevImage()
+            } else if (offset.x < -100) {
+              nextImage()
+            } else {
+              controls.start({ x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } })
+            }
+          }}
         >
           <Image
             src={images[currentIndex]}
             alt={`Image ${currentIndex + 1}`}
             layout="fill"
-            objectFit="contain"
+            objectFit="cover"
             priority
+            className="pointer-events-none"
           />
         </motion.div>
       </AnimatePresence>
       <Button
-        className="absolute bottom-4 right-4 bg-primary/50 hover:bg-primary/75"
+        className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-primary/50 hover:bg-primary/75"
+        onClick={prevImage}
+        aria-label="Previous image"
+      >
+        <ChevronLeft className="w-6 h-6" />
+        <span className="sr-only">Previous</span>
+      </Button>
+      <Button
+        className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-primary/50 hover:bg-primary/75"
         onClick={nextImage}
         aria-label="Next image"
       >
